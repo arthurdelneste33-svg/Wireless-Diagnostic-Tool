@@ -3,6 +3,14 @@
     <string name="tab_nfc">NFC</string>
     <string name="tab_wifi">Wi-Fi</string>
     <string name="tab_bluetooth">Bluetooth</string>
+    <string name="tab_settings">Paramètres</string>
+
+    <!-- Settings Strings -->
+    <string name="settings_title">Paramètres &amp; Système</string>
+    <string name="settings_github_update">Mise à jour GitHub</string>
+    <string name="settings_theme">Personnalisation Couleur</string>
+    <string name="settings_credits">Crédits Arthur Développement</string>
+
 
     <!-- NFC Strings -->
     <string name="nfc_title">Lecteur de Tags &amp; Cartes NFC</string>

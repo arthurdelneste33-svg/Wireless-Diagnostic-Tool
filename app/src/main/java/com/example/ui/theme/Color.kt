@@ -48,3 +48,44 @@ val LightOutline = Color(0xFFCAD4DF)
 val StatusGreen = Color(0xFF00E676)
 val StatusOrange = Color(0xFFFF9100)
 val StatusRed = Color(0xFFFF5252)
+
+// Theme 2: Matrix Emerald Palette
+val EmeraldPrimaryDark = Color(0xFF00E676)
+val EmeraldOnPrimaryDark = Color(0xFF003919)
+val EmeraldPrimaryContainerDark = Color(0xFF005327)
+val EmeraldOnPrimaryContainerDark = Color(0xFF69FF9E)
+val EmeraldSecondaryDark = Color(0xFF1DE9B6)
+val EmeraldTertiaryDark = Color(0xFF76FF03)
+
+// Theme 3: Synthwave Violet Palette
+val VioletPrimaryDark = Color(0xFFD500F9)
+val VioletOnPrimaryDark = Color(0xFF4A0059)
+val VioletPrimaryContainerDark = Color(0xFF710086)
+val VioletOnPrimaryContainerDark = Color(0xFFF6B5FF)
+val VioletSecondaryDark = Color(0xFFB388FF)
+val VioletTertiaryDark = Color(0xFFFF4081)
+
+// Theme 4: Electric Amber Palette
+val AmberPrimaryDark = Color(0xFFFFAB00)
+val AmberOnPrimaryDark = Color(0xFF432B00)
+val AmberPrimaryContainerDark = Color(0xFF613F00)
+val AmberOnPrimaryContainerDark = Color(0xFFFFDF9E)
+val AmberSecondaryDark = Color(0xFFFFD600)
+val AmberTertiaryDark = Color(0xFFFF6D00)
+
+// Theme 5: Crimson Alert Palette
+val CrimsonPrimaryDark = Color(0xFFFF1744)
+val CrimsonOnPrimaryDark = Color(0xFF41000B)
+val CrimsonPrimaryContainerDark = Color(0xFF680016)
+val CrimsonOnPrimaryContainerDark = Color(0xFFFFB3B9)
+val CrimsonSecondaryDark = Color(0xFFFF5252)
+val CrimsonTertiaryDark = Color(0xFFFF80AB)
+
+// Theme 6: Sapphire Ocean Palette
+val SapphirePrimaryDark = Color(0xFF2979FF)
+val SapphireOnPrimaryDark = Color(0xFF00297B)
+val SapphirePrimaryContainerDark = Color(0xFF003CA8)
+val SapphireOnPrimaryContainerDark = Color(0xFFBBDEFB)
+val SapphireSecondaryDark = Color(0xFF00B0FF)
+val SapphireTertiaryDark = Color(0xFF00E5FF)
+

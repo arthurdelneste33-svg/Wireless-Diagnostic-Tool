@@ -26,13 +26,16 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Nfc
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Nfc
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -53,13 +56,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.PermissionRequiredBanner
 import com.example.ui.screens.BluetoothScreen
 import com.example.ui.screens.NfcScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.WifiScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.BluetoothViewModel
 import com.example.viewmodel.NfcViewModel
+import com.example.viewmodel.SettingsViewModel
 import com.example.viewmodel.WifiViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -72,7 +78,8 @@ enum class DiagnosticTab(
 ) {
     NFC(R.string.tab_nfc, Icons.Filled.Nfc, Icons.Outlined.Nfc, "tab_nfc"),
     WIFI(R.string.tab_wifi, Icons.Filled.Wifi, Icons.Outlined.Wifi, "tab_wifi"),
-    BLUETOOTH(R.string.tab_bluetooth, Icons.Filled.Bluetooth, Icons.Outlined.Bluetooth, "tab_bluetooth")
+    BLUETOOTH(R.string.tab_bluetooth, Icons.Filled.Bluetooth, Icons.Outlined.Bluetooth, "tab_bluetooth"),
+    SETTINGS(R.string.tab_settings, Icons.Filled.Settings, Icons.Outlined.Settings, "tab_settings")
 }
 
 class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
@@ -81,6 +88,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     private val nfcViewModel: NfcViewModel by viewModels()
     private val wifiViewModel: WifiViewModel by viewModels()
     private val bluetoothViewModel: BluetoothViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,15 +101,24 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
         handleNfcIntent(intent)
 
         setContent {
-            MyApplicationTheme {
+            val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+
+            MyApplicationTheme(
+                palette = settingsUiState.colorPalette,
+                darkTheme = settingsUiState.isDarkTheme,
+                isAmoled = settingsUiState.isAmoled,
+                dynamicColor = settingsUiState.isDynamicColor
+            ) {
                 MainAppScreen(
                     nfcViewModel = nfcViewModel,
                     wifiViewModel = wifiViewModel,
-                    bluetoothViewModel = bluetoothViewModel
+                    bluetoothViewModel = bluetoothViewModel,
+                    settingsViewModel = settingsViewModel
                 )
             }
         }
     }
+
 
     override fun onResume() {
         super.onResume()
@@ -214,7 +231,8 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
 fun MainAppScreen(
     nfcViewModel: NfcViewModel,
     wifiViewModel: WifiViewModel,
-    bluetoothViewModel: BluetoothViewModel
+    bluetoothViewModel: BluetoothViewModel,
+    settingsViewModel: SettingsViewModel
 ) {
     var selectedTab by remember { mutableStateOf(DiagnosticTab.NFC) }
 
@@ -262,6 +280,18 @@ fun MainAppScreen(
                         }
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = { selectedTab = DiagnosticTab.SETTINGS },
+                        modifier = Modifier.testTag("top_settings_button")
+                    ) {
+                        Icon(
+                            imageVector = if (selectedTab == DiagnosticTab.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
+                            contentDescription = stringResource(R.string.tab_settings),
+                            tint = if (selectedTab == DiagnosticTab.SETTINGS) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -303,7 +333,7 @@ fun MainAppScreen(
                 .padding(innerPadding)
         ) {
             // Permission request banner if needed for Wi-Fi / BT
-            if (!permissionsState.allPermissionsGranted && selectedTab != DiagnosticTab.NFC) {
+            if (!permissionsState.allPermissionsGranted && selectedTab != DiagnosticTab.NFC && selectedTab != DiagnosticTab.SETTINGS) {
                 PermissionRequiredBanner(
                     title = stringResource(R.string.permission_required_title),
                     description = stringResource(R.string.permission_required_desc),
@@ -322,6 +352,7 @@ fun MainAppScreen(
                         DiagnosticTab.NFC -> NfcScreen(viewModel = nfcViewModel)
                         DiagnosticTab.WIFI -> WifiScreen(viewModel = wifiViewModel)
                         DiagnosticTab.BLUETOOTH -> BluetoothScreen(viewModel = bluetoothViewModel)
+                        DiagnosticTab.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
                     }
                 }
             }
