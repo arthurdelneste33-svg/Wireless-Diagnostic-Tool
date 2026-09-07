@@ -5,13 +5,20 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -51,8 +58,12 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Memory
@@ -306,30 +317,37 @@ fun NfcScreen(
                 // High-Tech Cyber Antenna Radar Visualizer
                 NfcAntennaRadar(
                     isTagDetected = uiState.currentTag != null,
-                    statusText = uiState.statusMessage
+                    statusText = uiState.statusMessage,
+                    onReplayDetectionSound = { viewModel.playDetectionSoundManual() }
                 )
             }
         }
 
         // Active / Selected Tag: Holographic Smartcard & Detailed Inspector
         uiState.currentTag?.let { tag ->
-            item {
-                NfcHolographicCard(
-                    tag = tag,
-                    onCopyUid = {
-                        clipboardManager.setText(AnnotatedString(tag.uidHex))
-                        copiedNotice = "UID ${tag.uidHex} copié"
-                    },
-                    onShareReport = {
-                        val report = viewModel.generateDiagnosticReport(tag)
-                        val sendIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, report)
-                            type = "text/plain"
+            item(key = tag.uidHex) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = true,
+                    enter = androidx.compose.animation.fadeIn(animationSpec = tween(500)) +
+                            androidx.compose.animation.scaleIn(initialScale = 0.90f, animationSpec = tween(500, easing = FastOutSlowInEasing))
+                ) {
+                    NfcHolographicCard(
+                        tag = tag,
+                        onCopyUid = {
+                            clipboardManager.setText(AnnotatedString(tag.uidHex))
+                            copiedNotice = "UID ${tag.uidHex} copié"
+                        },
+                        onShareReport = {
+                            val report = viewModel.generateDiagnosticReport(tag)
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, report)
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Partager le rapport NFC"))
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "Partager le rapport NFC"))
-                    }
-                )
+                    )
+                }
             }
 
             // Copy feedback toast banner if triggered
@@ -555,6 +573,7 @@ fun NfcScreen(
 fun NfcAntennaRadar(
     isTagDetected: Boolean,
     statusText: String,
+    onReplayDetectionSound: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "radarTransition")
@@ -577,13 +596,27 @@ fun NfcAntennaRadar(
         label = "sweepAngle"
     )
 
+    // Animated glow when card is detected
+    val detectionGlow by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "detectionGlow"
+    )
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF0D1420)
         ),
-        border = BorderStroke(1.dp, Color(0xFF1E2D42))
+        border = BorderStroke(
+            if (isTagDetected) 1.5.dp else 1.dp,
+            if (isTagDetected) Color(0xFF00F5A0).copy(alpha = detectionGlow) else Color(0xFF1E2D42)
+        )
     ) {
         Column(
             modifier = Modifier
@@ -593,12 +626,12 @@ fun NfcAntennaRadar(
         ) {
             Box(
                 modifier = Modifier
-                    .size(160.dp)
+                    .size(170.dp)
                     .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                val primaryColor = Color(0xFF00E5FF)
-                val accentTeal = Color(0xFF00F5A0)
+                val primaryColor = if (isTagDetected) Color(0xFF00F5A0) else Color(0xFF00E5FF)
+                val accentTeal = if (isTagDetected) Color(0xFF00E5FF) else Color(0xFF00F5A0)
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val center = Offset(size.width / 2f, size.height / 2f)
@@ -606,19 +639,19 @@ fun NfcAntennaRadar(
 
                     // Background grid circles
                     drawCircle(
-                        color = Color(0xFF172335),
+                        color = if (isTagDetected) Color(0xFF0D3325) else Color(0xFF172335),
                         radius = maxRadius,
                         center = center,
                         style = Stroke(width = 1.5.dp.toPx())
                     )
                     drawCircle(
-                        color = Color(0xFF172335),
+                        color = if (isTagDetected) Color(0xFF0D3325) else Color(0xFF172335),
                         radius = maxRadius * 0.66f,
                         center = center,
                         style = Stroke(width = 1.dp.toPx())
                     )
                     drawCircle(
-                        color = Color(0xFF172335),
+                        color = if (isTagDetected) Color(0xFF0D3325) else Color(0xFF172335),
                         radius = maxRadius * 0.33f,
                         center = center,
                         style = Stroke(width = 1.dp.toPx())
@@ -626,24 +659,34 @@ fun NfcAntennaRadar(
 
                     // Expanding RF Pulse Wave
                     val waveRadius = maxRadius * pulseProgress
-                    val waveAlpha = (1f - pulseProgress).coerceIn(0f, 1f) * 0.8f
+                    val waveAlpha = (1f - pulseProgress).coerceIn(0f, 1f) * (if (isTagDetected) 0.95f else 0.8f)
                     drawCircle(
                         color = primaryColor.copy(alpha = waveAlpha),
                         radius = waveRadius,
                         center = center,
-                        style = Stroke(width = 2.dp.toPx())
+                        style = Stroke(width = if (isTagDetected) 3.dp.toPx() else 2.dp.toPx())
                     )
 
                     // Secondary offset wave
                     val wave2Progress = (pulseProgress + 0.5f) % 1f
                     val wave2Radius = maxRadius * wave2Progress
-                    val wave2Alpha = (1f - wave2Progress).coerceIn(0f, 1f) * 0.5f
+                    val wave2Alpha = (1f - wave2Progress).coerceIn(0f, 1f) * 0.6f
                     drawCircle(
                         color = accentTeal.copy(alpha = wave2Alpha),
                         radius = wave2Radius,
                         center = center,
                         style = Stroke(width = 1.5.dp.toPx())
                     )
+
+                    // If tag detected, show vibrating resonant lock circle
+                    if (isTagDetected) {
+                        drawCircle(
+                            color = Color(0xFF00F5A0).copy(alpha = 0.35f * detectionGlow),
+                            radius = maxRadius * 0.85f,
+                            center = center,
+                            style = Stroke(width = 4.dp.toPx())
+                        )
+                    }
 
                     // Radar sweep beam line
                     val rad = Math.toRadians(sweepAngle.toDouble())
@@ -679,13 +722,13 @@ fun NfcAntennaRadar(
 
                     // Center target indicator
                     drawCircle(
-                        color = primaryColor.copy(alpha = 0.25f),
-                        radius = 16.dp.toPx(),
+                        color = primaryColor.copy(alpha = if (isTagDetected) 0.4f else 0.25f),
+                        radius = 18.dp.toPx(),
                         center = center
                     )
                     drawCircle(
                         color = primaryColor,
-                        radius = 4.dp.toPx(),
+                        radius = if (isTagDetected) 6.dp.toPx() else 4.dp.toPx(),
                         center = center
                     )
                 }
@@ -694,24 +737,67 @@ fun NfcAntennaRadar(
                     imageVector = Icons.Default.Sensors,
                     contentDescription = null,
                     tint = if (isTagDetected) Color(0xFF00F5A0) else Color(0xFF00E5FF),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Text(
-                text = if (isTagDetected) "Tag Connecté au Champ RF" else "Antenne NFC Active (13.56 MHz)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isTagDetected) Color(0xFF00F5A0) else Color(0xFF00E5FF)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (isTagDetected) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF00F5A0))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text = if (isTagDetected) "Tag Connecté au Champ RF" else "Antenne NFC Active (13.56 MHz)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isTagDetected) Color(0xFF00F5A0) else Color(0xFF00E5FF)
+                )
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            // Audio & feedback quick-action pill
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF1E293B).copy(alpha = 0.8f),
+                border = BorderStroke(1.dp, Color(0xFF334155)),
+                modifier = Modifier.clickable { onReplayDetectionSound() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VolumeUp,
+                        contentDescription = "Test du son",
+                        tint = Color(0xFF00E5FF),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Signal sonore NFC actif • Cliquer pour rejouer",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = Color(0xFFE2E8F0),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
@@ -1037,6 +1123,94 @@ fun NfcOverviewTab(tag: NfcTagData) {
                 }
             }
         }
+
+        // Advanced Technical Specification & Security Card
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFF0F172A),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = Color(0xFF00E5FF),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "ANALYSE TECHNIQUE & SÉCURITÉ AVANCÉE",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00E5FF)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Detail 1: Longueur UID & Anti-collision Cascade
+                val uidByteCount = if (tag.uidHex != "Inconnu") tag.uidHex.replace(" ", "").length / 2 else 0
+                val cascadeLevel = when (uidByteCount) {
+                    4 -> "Cascade Niveau 1 (UID simple 4 octets / 32 bits)"
+                    7 -> "Cascade Niveau 2 (Double size UID 7 octets / 56 bits standard NFC Forum)"
+                    10 -> "Cascade Niveau 3 (Triple size UID 10 octets / 80 bits)"
+                    else -> "Dimension variable (${uidByteCount} octets)"
+                }
+                Text(
+                    text = "Structure d'UID & Anticollision :",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF94A3B8),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = cascadeLevel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFF1F5F9)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Detail 2: Profil Cryptographique et Sécurité
+                val securityProfile = when {
+                    tag.smartCardCategory != null -> "Chiffrement Matériel Sécurisé (EAL5+/EAL6+), Authentification Mutuelle 3DES/AES"
+                    tag.tagType.contains("MIFARE Classic") -> "Crypto-1 propriétaire (48-bit key). Vulnérable aux attaques Darkside/Nested"
+                    tag.tagType.contains("NTAG") -> "Signature ECC elliptic curve asymétrique NXP (Vérification d'authenticité)"
+                    tag.tagType.contains("Ultralight C") -> "Authentification mutuelle 3DES (Triple DES)"
+                    else -> "Contrôle d'accès standard par bits de verrouillage (Lock Bytes OTP)"
+                }
+                Text(
+                    text = "Profil Cryptographique & Niveau de Sécurité :",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF94A3B8),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = securityProfile,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFF1F5F9)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Detail 3: Débit et Modulation RF
+                Text(
+                    text = "Modulation & Couplage Radio (RF) :",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF94A3B8),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Fréquence 13.56 MHz ±7 kHz • Modulation ASK 100% (Type A) / ASK 10% (Type B) • Débit standard 106 kbit/s (extensible à 424/848 kbit/s)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFF1F5F9)
+                )
+            }
+        }
     }
 }
 
@@ -1303,6 +1477,89 @@ fun NfcRfTab(tag: NfcTagData) {
                         style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Timing & RF Protocol Metrics (Advanced ISO 14443 / NFC Forum RF Analysis)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFF0F172A),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = Color(0xFF00E5FF),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "PARAMÈTRES RF & COUCHE PHYSIQUE ISO 14443",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00E5FF)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Bande Passante RF :",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Text(
+                        text = "13.553 MHz – 13.567 MHz (ISM)",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF1F5F9)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Temps de Réponse Cadre (FDT) :",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Text(
+                        text = "1236 / fc (~91.15 µs)",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00F5A0)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Codage Binaire :",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Text(
+                        text = if (tag.tagType.contains("NfcB")) "NRZ (Type B)" else "Miller Modifié (PCD → PICC)",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF1F5F9)
                     )
                 }
             }

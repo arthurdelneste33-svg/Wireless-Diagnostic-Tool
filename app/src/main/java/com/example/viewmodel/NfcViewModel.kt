@@ -4,6 +4,7 @@ import android.nfc.Tag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.NfcTagData
+import com.example.nfc.NfcAudioSynthesizer
 import com.example.nfc.NfcTagParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,8 @@ data class NfcUiState(
     val scanHistory: List<NfcTagData> = emptyList(),
     val statusMessage: String = "En attente d'un tag ou d'une carte NFC...",
     val demoTags: List<NfcTagData> = NfcTagParser.getDemoTags(),
-    val scanCount: Int = 0
+    val scanCount: Int = 0,
+    val detectionTimestamp: Long = 0L
 )
 
 class NfcViewModel : ViewModel() {
@@ -58,12 +60,14 @@ class NfcViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val tagData = NfcTagParser.parseTag(tag)
+                NfcAudioSynthesizer.playDetectionChime()
                 _uiState.update { current ->
                     val updatedHistory = listOf(tagData) + current.scanHistory.filter { it.uidHex != tagData.uidHex }
                     current.copy(
                         currentTag = tagData,
                         scanHistory = updatedHistory.take(25),
                         scanCount = current.scanCount + 1,
+                        detectionTimestamp = System.currentTimeMillis(),
                         statusMessage = "Tag détecté ! UID: ${tagData.uidHex} (${tagData.tagType})"
                     )
                 }
@@ -76,14 +80,21 @@ class NfcViewModel : ViewModel() {
     }
 
     fun loadDemoTag(tagData: NfcTagData) {
+        NfcAudioSynthesizer.playDetectionChime()
         _uiState.update { current ->
             val updatedHistory = listOf(tagData) + current.scanHistory.filter { it.uidHex != tagData.uidHex }
             current.copy(
                 currentTag = tagData,
                 scanHistory = updatedHistory,
-                statusMessage = "Exemple chargé : ${tagData.tagType}"
+                scanCount = current.scanCount + 1,
+                detectionTimestamp = System.currentTimeMillis(),
+                statusMessage = "Tag détecté ! UID: ${tagData.uidHex} (${tagData.tagType})"
             )
         }
+    }
+
+    fun playDetectionSoundManual() {
+        NfcAudioSynthesizer.playDetectionChime()
     }
 
     fun selectTagFromHistory(tagData: NfcTagData) {
