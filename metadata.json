@@ -1,0 +1,6 @@
+{
+  "name": "Wireless Diagnostic Tool",
+  "description": "Outil d'analyse et de diagnostic sans fil tout-en-un pour Android 15+: Lecteur NFC/Cartes, Inspecteur Réseau Wi-Fi & mDNS, et Explorateur Bluetooth BLE & GATT.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

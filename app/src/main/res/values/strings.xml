@@ -1,0 +1,61 @@
+<resources>
+    <string name="app_name">Wireless Diagnostic Tool</string>
+    <string name="tab_nfc">NFC</string>
+    <string name="tab_wifi">Wi-Fi</string>
+    <string name="tab_bluetooth">Bluetooth</string>
+
+    <!-- NFC Strings -->
+    <string name="nfc_title">Lecteur de Tags &amp; Cartes NFC</string>
+    <string name="nfc_status_ready">Prêt à scanner. Approchez un tag ou une carte NFC...</string>
+    <string name="nfc_status_not_supported">NFC non supporté sur cet appareil.</string>
+    <string name="nfc_status_disabled">NFC désactivé. Veuillez l\'activer dans les Paramètres.</string>
+    <string name="nfc_open_settings">Ouvrir Paramètres NFC</string>
+    <string name="nfc_tag_detected">Tag NFC détecté !</string>
+    <string name="nfc_uid">UID (Identifiant Unique)</string>
+    <string name="nfc_tech_list">Technologies supportées</string>
+    <string name="nfc_memory_size">Taille mémoire</string>
+    <string name="nfc_tag_type">Type de tag</string>
+    <string name="nfc_ndef_records">Enregistrements NDEF</string>
+    <string name="nfc_clear">Effacer l\'historique</string>
+    <string name="nfc_tab_overview">Synthèse</string>
+    <string name="nfc_tab_ndef">NDEF</string>
+    <string name="nfc_tab_memory">Mémoire &amp; Hex</string>
+    <string name="nfc_tab_rf">Couche RF</string>
+    <string name="nfc_share_report">Partager le rapport</string>
+    <string name="nfc_demo_tags">Tags de démonstration</string>
+
+    <!-- Wi-Fi Strings -->
+    <string name="wifi_title">Inspecteur Réseau Local Wi-Fi</string>
+    <string name="wifi_scan_button">Scanner le sous-réseau</string>
+    <string name="wifi_scanning">Scan du réseau en cours…</string>
+    <string name="wifi_not_connected">Non connecté au Wi-Fi</string>
+    <string name="wifi_ssid">SSID</string>
+    <string name="wifi_bssid">BSSID</string>
+    <string name="wifi_ip">Adresse IP locale</string>
+    <string name="wifi_gateway">Passerelle (Gateway)</string>
+    <string name="wifi_netmask">Masque de sous-réseau</string>
+    <string name="wifi_rssi">Signal (RSSI)</string>
+    <string name="wifi_freq">Fréquence / Bande</string>
+    <string name="wifi_speed">Vitesse de liaison</string>
+    <string name="wifi_active_hosts">Hôtes actifs découverts</string>
+
+    <!-- Bluetooth Strings -->
+    <string name="bt_title">Explorateur Bluetooth &amp; BLE</string>
+    <string name="bt_scan_start">Démarrer le scan</string>
+    <string name="bt_scan_stop">Arrêter le scan</string>
+    <string name="bt_scanning">Recherche d\'appareils Bluetooth / BLE…</string>
+    <string name="bt_not_supported">Bluetooth non supporté sur cet appareil.</string>
+    <string name="bt_disabled">Bluetooth désactivé. Veuillez l\'activer.</string>
+    <string name="bt_device_name">Nom</string>
+    <string name="bt_device_address">Adresse MAC</string>
+    <string name="bt_rssi">RSSI</string>
+    <string name="bt_gatt_services">Services GATT</string>
+    <string name="bt_connect_gatt">Explorer GATT</string>
+    <string name="bt_disconnect_gatt">Déconnecter GATT</string>
+    <string name="bt_connecting">Connexion GATT en cours…</string>
+
+    <!-- Permissions Strings -->
+    <string name="permission_required_title">Autorisations requises</string>
+    <string name="permission_required_desc">L\'application nécessite l\'accès au Bluetooth, au Wi-Fi de proximité et à la localisation pour effectuer les diagnostics sans fil.</string>
+    <string name="permission_grant_button">Accorder les permissions</string>
+</resources>
