@@ -70,6 +70,22 @@ data class NetworkHost(
     val serviceInfo: String? = null
 )
 
+data class NetworkPingResult(
+    val target: String,
+    val isReachable: Boolean,
+    val latencyMs: Long,
+    val message: String
+)
+
+data class NetworkSpeedBenchmark(
+    val isTesting: Boolean = false,
+    val progress: Float = 0f,
+    val currentSpeedMbps: Double = 0.0,
+    val averageSpeedMbps: Double = 0.0,
+    val pingMs: Long = 0,
+    val statusText: String = "Prêt pour le test"
+)
+
 /**
  * Bluetooth Data Models
  */
@@ -80,6 +96,9 @@ data class BleDeviceItem(
     val bondState: String,
     val deviceType: String,
     val advertisedServiceUuids: List<String> = emptyList(),
+    val rssiHistory: List<Int> = emptyList(),
+    val txPowerDbm: Int? = null,
+    val estimatedDistanceMeters: Double? = null,
     val lastSeenTimestamp: Long = System.currentTimeMillis()
 )
 

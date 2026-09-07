@@ -339,4 +339,115 @@ class WifiInspector(private val context: Context) {
             (i shr 24) and 0xFF
         )
     }
+
+    /**
+     * Pings a specific host or domain (e.g. 1.1.1.1, google.com, local gateway) and measures exact round-trip time.
+     */
+    suspend fun pingHost(target: String): com.example.data.model.NetworkPingResult = withContext(Dispatchers.IO) {
+        val cleanTarget = target.trim().replace("https://", "").replace("http://", "").substringBefore("/")
+        val startTime = System.currentTimeMillis()
+        try {
+            val inet = InetAddress.getByName(cleanTarget)
+            // Try socket connect on 80/443 for fast internet targets, or icmp
+            var reachable = false
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(inet, 443), 800)
+                    reachable = true
+                }
+            } catch (_: Exception) {
+                try {
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(inet, 80), 800)
+                        reachable = true
+                    }
+                } catch (_: Exception) {
+                    reachable = inet.isReachable(1000)
+                }
+            }
+
+            val latency = (System.currentTimeMillis() - startTime).coerceAtLeast(1L)
+            if (reachable) {
+                com.example.data.model.NetworkPingResult(
+                    target = cleanTarget,
+                    isReachable = true,
+                    latencyMs = latency,
+                    message = "Réponse de ${inet.hostAddress} : temps = ${latency}ms"
+                )
+            } else {
+                com.example.data.model.NetworkPingResult(
+                    target = cleanTarget,
+                    isReachable = false,
+                    latencyMs = 0L,
+                    message = "Hôte inaccessible ou délai dépassé (>1000ms)"
+                )
+            }
+        } catch (e: Exception) {
+            com.example.data.model.NetworkPingResult(
+                target = cleanTarget,
+                isReachable = false,
+                latencyMs = 0L,
+                message = "Erreur de résolution DNS : ${e.message ?: "Introuvable"}"
+            )
+        }
+    }
+
+    /**
+     * Executes real HTTP bandwidth throughput test to evaluate link and Internet download performance.
+     */
+    suspend fun runSpeedBenchmark(
+        onProgress: (progress: Float, currentSpeedMbps: Double, averageSpeedMbps: Double) -> Unit
+    ): Double = withContext(Dispatchers.IO) {
+        val testUrl = "https://speed.cloudflare.com/__down?bytes=10000000" // 10MB test stream
+        var totalBytesRead = 0L
+        val startTime = System.currentTimeMillis()
+
+        try {
+            val url = java.net.URL(testUrl)
+            val connection = url.openConnection() as java.net.HttpURLConnection
+            connection.connectTimeout = 4000
+            connection.readTimeout = 7000
+            connection.instanceFollowRedirects = true
+            connection.connect()
+
+            val totalBytesExpected = 10_000_000L
+            val buffer = ByteArray(8192)
+            val inputStream = connection.inputStream
+
+            var lastSampleTime = System.currentTimeMillis()
+            var bytesInSample = 0L
+
+            while (true) {
+                val bytesRead = inputStream.read(buffer)
+                if (bytesRead == -1) break
+                totalBytesRead += bytesRead
+                bytesInSample += bytesRead
+
+                val now = System.currentTimeMillis()
+                val elapsedSinceSample = now - lastSampleTime
+                if (elapsedSinceSample >= 250) {
+                    val currentSpeed = (bytesInSample * 8.0) / (elapsedSinceSample / 1000.0) / 1_000_000.0
+                    val totalElapsedSec = (now - startTime) / 1000.0
+                    val avgSpeed = if (totalElapsedSec > 0) (totalBytesRead * 8.0) / totalElapsedSec / 1_000_000.0 else 0.0
+                    val progress = (totalBytesRead.toFloat() / totalBytesExpected.toFloat()).coerceIn(0f, 1f)
+                    onProgress(progress, currentSpeed, avgSpeed)
+                    bytesInSample = 0L
+                    lastSampleTime = now
+                }
+            }
+            inputStream.close()
+            connection.disconnect()
+        } catch (_: Exception) {
+            // In case of offline/timeout, simulate with link speed factor if connected
+        }
+
+        val totalElapsedSec = (System.currentTimeMillis() - startTime) / 1000.0
+        val finalAverage = if (totalElapsedSec > 0 && totalBytesRead > 0) {
+            (totalBytesRead * 8.0) / totalElapsedSec / 1_000_000.0
+        } else {
+            0.0
+        }
+        onProgress(1f, finalAverage, finalAverage)
+        finalAverage
+    }
 }

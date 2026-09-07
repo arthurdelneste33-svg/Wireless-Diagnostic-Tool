@@ -50,6 +50,9 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Memory
@@ -67,6 +70,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -415,6 +419,12 @@ fun NfcScreen(
                                 text = { Text(stringResource(R.string.nfc_tab_rf), style = MaterialTheme.typography.labelMedium) },
                                 icon = { Icon(Icons.Outlined.Radio, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             )
+                            Tab(
+                                selected = selectedInspectorTab == 4,
+                                onClick = { selectedInspectorTab = 4 },
+                                text = { Text("Écriture", style = MaterialTheme.typography.labelMedium) },
+                                icon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -424,6 +434,7 @@ fun NfcScreen(
                             1 -> NfcNdefTab(tag = tag, context = context)
                             2 -> NfcMemoryTab(tag = tag)
                             3 -> NfcRfTab(tag = tag)
+                            4 -> NfcWriterTab(tag = tag)
                         }
                     }
                 }
@@ -1292,6 +1303,174 @@ fun NfcRfTab(tag: NfcTagData) {
                         style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tab 4: NDEF Payload Writer & Encoder Simulator.
+ */
+@Composable
+fun NfcWriterTab(tag: NfcTagData) {
+    var writeMode by remember { mutableStateOf("URL") } // "URL" or "TEXT"
+    var urlInput by remember { mutableStateOf("https://github.com/arthurdelneste33-svg") }
+    var textInput by remember { mutableStateOf("Diagnostic Arthur Développement") }
+    var writeStatus by remember { mutableStateOf<String?>(null) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "GÉNÉRATEUR & ENCODEUR NDEF",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (tag.isWritable == false) {
+                        "⚠️ Ce tag est verrouillé en lecture seule. Vous pouvez générer et prévisualiser les paquets NDEF bruts."
+                    } else {
+                        "Préparez une charge utile NDEF (URI Web ou Texte UTF-8) à injecter sur un tag compatible."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Mode Switcher (URL vs Text)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { writeMode = "URL"; writeStatus = null },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (writeMode == "URL") MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Lien Web (URI)", style = MaterialTheme.typography.labelMedium)
+            }
+
+            OutlinedButton(
+                onClick = { writeMode = "TEXT"; writeStatus = null },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (writeMode == "TEXT") MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Texte Brut", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
+        if (writeMode == "URL") {
+            OutlinedTextField(
+                value = urlInput,
+                onValueChange = { urlInput = it; writeStatus = null },
+                label = { Text("URL de destination") },
+                placeholder = { Text("https://...") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+        } else {
+            OutlinedTextField(
+                value = textInput,
+                onValueChange = { textInput = it; writeStatus = null },
+                label = { Text("Message Texte") },
+                placeholder = { Text("Texte à inscrire sur le tag...") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                maxLines = 3
+            )
+        }
+
+        // Payload Hex Preview
+        val payloadBytes = if (writeMode == "URL") urlInput.toByteArray(Charsets.UTF_8) else textInput.toByteArray(Charsets.UTF_8)
+        val payloadHexPreview = payloadBytes.joinToString(" ") { "%02X".format(it) }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFF090E17),
+            border = BorderStroke(1.dp, Color(0xFF1C2A3D))
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Trame NDEF Encodée (${payloadBytes.size + 4} octets)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF00E5FF),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (writeMode == "URL") "TNF: Well-Known [U]" else "TNF: Well-Known [T]",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "D1 01 ${"%02X".format(payloadBytes.size)} ${if (writeMode == "URL") "55 00 " else "54 02 "} $payloadHexPreview",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                    color = Color(0xFF00F5A0)
+                )
+            }
+        }
+
+        Button(
+            onClick = {
+                writeStatus = "Trame NDEF prête ! Approchez un tag NFC compatible (NTAG213/215/216 ou Mifare Ultralight) pour l'écriture."
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Encoder & Écrire la Trame NDEF")
+        }
+
+        writeStatus?.let { status ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = status,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }

@@ -88,13 +88,19 @@ class BluetoothExplorer(private val context: Context) {
                     BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual Mode"
                     else -> "BLE"
                 }
+                val txPower = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    result.txPower.takeIf { it != ScanResult.TX_POWER_NOT_PRESENT }
+                } else null
+                val distance = calculateDistance(result.rssi, txPower ?: -59)
                 val item = BleDeviceItem(
                     address = device.address,
                     name = device.name ?: result.scanRecord?.deviceName,
                     rssi = result.rssi,
                     bondState = bondStateDesc,
                     deviceType = typeDesc,
-                    advertisedServiceUuids = uuids
+                    advertisedServiceUuids = uuids,
+                    txPowerDbm = txPower,
+                    estimatedDistanceMeters = distance
                 )
                 trySend(item)
             }
@@ -264,6 +270,17 @@ class BluetoothExplorer(private val context: Context) {
                 s.startsWith("00002A06") -> "Alert Level"
                 s.startsWith("00002A07") -> "Tx Power Level"
                 else -> "Caractéristique (${s.take(8)})"
+            }
+        }
+
+        fun calculateDistance(rssi: Int, txPower: Int): Double {
+            if (rssi == 0) return -1.0
+            val ratio = rssi.toDouble() / txPower.toDouble()
+            return if (ratio < 1.0) {
+                Math.pow(ratio, 10.0)
+            } else {
+                val dist = (0.89976) * Math.pow(ratio, 7.7095) + 0.111
+                (Math.round(dist * 10.0) / 10.0).coerceIn(0.1, 50.0)
             }
         }
     }

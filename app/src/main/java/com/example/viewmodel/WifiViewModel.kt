@@ -22,7 +22,11 @@ data class WifiUiState(
     val discoveredHosts: List<NetworkHost> = emptyList(),
     val mdnsHosts: List<NetworkHost> = emptyList(),
     val isMdnsSearching: Boolean = false,
-    val statusMessage: String = "Prêt à inspecter le réseau local"
+    val statusMessage: String = "Prêt à inspecter le réseau local",
+    val pingTarget: String = "1.1.1.1",
+    val isPinging: Boolean = false,
+    val pingResults: List<com.example.data.model.NetworkPingResult> = emptyList(),
+    val speedBenchmark: com.example.data.model.NetworkSpeedBenchmark = com.example.data.model.NetworkSpeedBenchmark()
 )
 
 class WifiViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,6 +38,8 @@ class WifiViewModel(application: Application) : AndroidViewModel(application) {
 
     private var subnetScanJob: Job? = null
     private var mdnsJob: Job? = null
+    private var pingJob: Job? = null
+    private var speedTestJob: Job? = null
 
     init {
         refreshWifiInfo()
@@ -137,9 +143,85 @@ class WifiViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setPingTarget(target: String) {
+        _uiState.update { it.copy(pingTarget = target) }
+    }
+
+    fun executePing(customTarget: String? = null) {
+        val target = (customTarget ?: _uiState.value.pingTarget).ifBlank { "1.1.1.1" }
+        pingJob?.cancel()
+        pingJob = viewModelScope.launch {
+            _uiState.update { it.copy(isPinging = true) }
+            val result = wifiInspector.pingHost(target)
+            _uiState.update { current ->
+                val newResults = (listOf(result) + current.pingResults).take(15)
+                current.copy(isPinging = false, pingResults = newResults)
+            }
+        }
+    }
+
+    fun clearPingResults() {
+        _uiState.update { it.copy(pingResults = emptyList()) }
+    }
+
+    fun startSpeedBenchmark() {
+        if (_uiState.value.speedBenchmark.isTesting) return
+        speedTestJob?.cancel()
+        speedTestJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    speedBenchmark = com.example.data.model.NetworkSpeedBenchmark(
+                        isTesting = true,
+                        progress = 0.05f,
+                        statusText = "Mesure de la latence initiale..."
+                    )
+                )
+            }
+
+            val ping = wifiInspector.pingHost("1.1.1.1")
+            val initialPingMs = if (ping.isReachable) ping.latencyMs else 25L
+
+            _uiState.update {
+                it.copy(
+                    speedBenchmark = it.speedBenchmark.copy(
+                        pingMs = initialPingMs,
+                        statusText = "Test de débit descendant en cours..."
+                    )
+                )
+            }
+
+            val avg = wifiInspector.runSpeedBenchmark { progress, currentSpeed, averageSpeed ->
+                _uiState.update { current ->
+                    current.copy(
+                        speedBenchmark = current.speedBenchmark.copy(
+                            progress = progress,
+                            currentSpeedMbps = currentSpeed,
+                            averageSpeedMbps = averageSpeed,
+                            statusText = "Débit : %.1f Mbps (Moyenne : %.1f Mbps)".format(currentSpeed, averageSpeed)
+                        )
+                    )
+                }
+            }
+
+            _uiState.update { current ->
+                current.copy(
+                    speedBenchmark = current.speedBenchmark.copy(
+                        isTesting = false,
+                        progress = 1f,
+                        currentSpeedMbps = avg,
+                        averageSpeedMbps = avg,
+                        statusText = "Test terminé : %.1f Mbps mesurés".format(avg)
+                    )
+                )
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         subnetScanJob?.cancel()
         mdnsJob?.cancel()
+        pingJob?.cancel()
+        speedTestJob?.cancel()
     }
 }

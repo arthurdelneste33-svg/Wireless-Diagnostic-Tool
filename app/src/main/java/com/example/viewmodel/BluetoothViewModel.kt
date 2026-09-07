@@ -60,7 +60,10 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
                 bluetoothExplorer.scanBleDevices().collect { device ->
                     _uiState.update { current ->
                         val updatedMap = current.devices.associateBy { it.address }.toMutableMap()
-                        updatedMap[device.address] = device
+                        val existing = updatedMap[device.address]
+                        val history = ((existing?.rssiHistory ?: emptyList()) + device.rssi).takeLast(10)
+                        val enhanced = device.copy(rssiHistory = history)
+                        updatedMap[device.address] = enhanced
                         val sorted = updatedMap.values.sortedByDescending { it.rssi }
                         current.copy(devices = sorted)
                     }
