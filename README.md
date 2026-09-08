@@ -54,9 +54,6 @@
 
 | Liste des Réseaux Wi-Fi | Analyse des Canaux | Outils de Diagnostic |
 | :---: | :---: | :---: |
-| *[Ajouter capture Wi-Fi]* | *[Ajouter capture Graphique]* | *[Ajouter capture Tools]* |
-
-*(Note: Pensez à ajouter vos propres captures d'écran dans un dossier `docs/images/` et à mettre à jour les liens).*
 
 ---
 
